@@ -15,9 +15,6 @@ parse_makecore_options() {
             -*)
                 error "unknown action option $1" ;;
             *)
-                if [ "$CB_CORE_PATH" ]; then
-                    error "too many arguments, $1"
-                fi
                 CB_CORE_PATH="$1" ;;
         esac
         shift
