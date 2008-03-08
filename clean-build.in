@@ -10,20 +10,25 @@ error() {
 parse_makecore_options() {
     while [ "$1" ]; do
         case "$1" in
+            -f|--force)
+                CB_FORCE_MAKE="true" ;;
             -*)
-                echo "got $1 flag" ;;
+                error "unknown action option $1" ;;
             *)
-                if [ "$CORE_PATH" ]; then
+                if [ "$CB_CORE_PATH" ]; then
                     error "too many arguments, $1"
                 fi
-                CORE_PATH="$1" ;;
+                CB_CORE_PATH="$1" ;;
         esac
         shift
     done
 }
 
 makecore() {
-    echo "$CORE_PATH"
+    if [ -e "$CB_CORE_PATH" -a -z "$CB_FORCE_MAKE" ]; then
+        error "$CORE_PATH exists, use -f to force creation"
+    fi
+    echo "$CB_CORE_PATH"
 }
 
 # Options parsing and related functions
