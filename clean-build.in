@@ -2,29 +2,48 @@
 
 # Helper functions
 error() {
-	echo "$PROG: $1"
+	echo "ERROR: $1" >&2
 	exit 1
 }
 
-# Actions and related functions
-init_core() {
-    DB_ROOT="$CB_CORE_PATH/var/lib/pkg/"
-    if [ ! -d "$CB_CORE_PATH" ]; then
-        mkdir -p "$CB_CORE_PATH" || error "could not create directory $CB_CORE_PATH"
-    fi
-    if [ ! -d "$DB_ROOT" ]; then
-        mkdir -p "$DB_ROOT"
-    fi
-    if [ ! -f "$DB_ROOT/db" ]; then
-        touch "$DB_ROOT/db"
+info() {
+    echo "==> $1"
+}
+
+verbose() {
+    if [ "$CB_VERBOSE" ]; then
+        echo "  * $1" >&2
     fi
 }
 
-parse_makecore_options() {
+load_file() {
+    if [ "$1" ]; then
+        if [ ! -f "$1" ]; then
+            error "could not find file $1"
+        fi
+        verbose "loading $1"
+        . "$1"
+    fi
+}
+
+# Actions and related functions
+check_core_path_set() {
+    if [ ! "$CB_CORE_PATH" ]; then
+        error "core path has not been set"
+    fi
+}
+
+port_installed() {
+    PORT_INSTALLED=`pkginfo -r $CB_CORE_PATH -i | cut -d' ' -f1 | grep "^$1$"`
+    echo "$PORT_INSTALLED"
+}
+
+# initcore and related functions
+parse_initcore_options() {
     while [ "$1" ]; do
         case "$1" in
             -f|--force)
-                CB_FORCE_MAKE="true" ;;
+                CB_FORCE_INIT="true" ;;
             -*)
                 error "unknown action option $1" ;;
             *)
@@ -34,26 +53,122 @@ parse_makecore_options() {
     done
 }
 
-makecore() {
-    if [ ! "$CB_CORE_PATH" ]; then
-        error "core path has not been set"
+do_initcore() {
+    DB_ROOT="$CB_CORE_PATH/var/lib/pkg/"
+    if [ ! -d "$CB_CORE_PATH" ]; then
+        verbose "creating directory $CB_CORE_PATH"
+        mkdir -p "$CB_CORE_PATH" || error "could not create directory $CB_CORE_PATH"
     fi
-    if [ -e "$CB_CORE_PATH" -a -z "$CB_FORCE_MAKE" ]; then
-        error "$CB_CORE_PATH exists, use the cleancore action or -f to overwrite"
+    verbose "creating package database"
+    if [ ! -d "$DB_ROOT" ]; then
+        mkdir -p "$DB_ROOT"
     fi
-    init_core
+    if [ ! -f "$DB_ROOT/db" ]; then
+        touch "$DB_ROOT/db"
+    fi
 }
 
-# Options parsing and related functions
-load_config() {
-    if [ "$CB_CONFIG_FILE" ]; then
-        if [ ! -f "$CB_CONFIG_FILE" ]; then
-            error "file $CB_CONFIG_FILE does not exist"
+initcore() {
+    check_core_path_set
+    if [ -e "$CB_CORE_PATH" -a "$CB_FORCE_INIT" == "false" ]; then
+        error "$CB_CORE_PATH exists, use -f to overwrite"
+    fi
+    info "creating core at $CB_CORE_PATH"
+    do_initcore
+    echo "Core path initialized, use installcore action to add core ports"
+}
+
+# installcore and related functions
+parse_installcore_options() {
+    while [ "$1" ]; do
+        case "$1" in
+            -u|--upgrade)
+                CB_UPGRADE_PORT="true" ;;
+            -f|--force-add)
+                CB_FORCE_ADD="true" ;;
+            -*)
+                error "unknown action option $1" ;;
+            *)
+                CB_CORE_PATH="$1" ;;
+        esac
+        shift
+    done
+}
+
+installcore() {
+    PKGADD_FLAGS="-r $PWD/$CB_CORE_PATH"
+    if [ "$CB_FORCE_ADD" == "true" ]; then
+        PKGADD_FLAGS="$PKGADD_FLAGS -f"
+    fi
+    info "installing toolchain"
+    for port in ${CB_TOOLCHAIN_PORTS[@]}; do
+        do_addport $CB_CORE_PORTS $port
+    done
+}
+
+# addport and related functions
+do_addport() {
+    verbose "using $1/$2"
+    
+    verbose "checking if $2 is installed"
+    if [ "`port_installed $2`" ]; then
+        if [ "$CB_UPGRAGE_PORT" != "true" ]; then
+            error "$2 is already installed, use -u flag or removeport action"
         fi
-        . "$CB_CONFIG_FILE"
+        PKGADD_FLAGS="$PKGADD_FLAGS -u"
     fi
+    verbose "$2 is not installed"
+    
+    (
+        cd $1
+        if [ ! -d "$2" ]; then
+            error "could not find port $2"
+        fi
+        cd $2
+    
+        load_file "$CB_PKGMK_FILE"
+        load_file "Pkgfile"
+    
+        TARGET="$name#$version-$release.pkg.tar.gz"
+        info "installing $TARGET"
+    
+        PACKAGE="$PKGMK_PACKAGE_DIR/$TARGET"
+        info "could not find $TARGET, building"
+        if [ ! -f "$PACKAGE" ]; then
+            pkgmk -d
+        fi
+        
+        COMMAND="pkgadd $PKGADD_FLAGS"
+        verbose "using command: $COMMAND"
+    
+        verbose "package: $$PACKAGE"
+        $COMMAND $PACKAGE
+    )
 }
 
+# cleancore and related functions
+parse_cleancore_options() {
+    while [ "$1" ]; do
+        case "$1" in
+            -*)
+                error "unknown action option $1" ;;
+            *)
+                CB_CORE_PATH="$1" ;;
+        esac
+        shift
+    done
+}
+
+cleancore() {
+    check_core_path_set
+    for port in $CB_CORE_PORTS/*; do
+        if [ "`port_installed $port`" ]; then
+            pkgrm -r "$CB_CORE_PATH" $port
+        fi
+    done
+}
+    
+# Options parsing and related functions
 print_version() {
     echo "$PROG @@VERSION@@"
 }
@@ -84,6 +199,14 @@ parse_options() {
                 fi
                 CB_CONFIG_FILE="$2"
                 shift ;;
+            -pf|--pkgmk-file)
+                if [ ! "$2" ]; then
+                    error "$1 required an argument"
+                fi
+                CB_PKGMK_FILE="$2"
+                shift ;;
+            -V|--verbose)
+                CB_VERBOSE="true" ;;
             -v|--version)
                 print_version
                 exit 0;;
@@ -109,7 +232,7 @@ parse_action() {
     done
     
     case $ACTION in
-        makecore|cleancore)
+        initcore|installcore|cleancore)
             parse_${ACTION}_options ${ACTION_OPTIONS[@]} ;;
         -*)
             error "unknown option $ACTION" ;;
@@ -125,16 +248,23 @@ main() {
     fi
     
 	parse_options "$@"
-    load_config
+    load_file "$CB_CONFIG_FILE"
     parse_action
     
     $ACTION
 }
 
 # Initialize some variables
-PROG="`basename $0`"
+CB_CORE_PORTS="/usr/ports/core"
+
+CB_FORCE_INIT="false"
+
+CB_PKGMK_FILE="/etc/pkgmk.conf"
+CB_UPGRADE_PORT="false"
+CB_FORCE_ADD="false"
 
 # Start the program
+PROG="`basename $0`"
 main "$@"
 
 # End of file
