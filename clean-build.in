@@ -1,0 +1,105 @@
+#!/bin/bash
+
+# Helper functions
+error() {
+	echo "$PROG: $1"
+	exit 1
+}
+
+# Actions
+parse_makecore_options() {
+    while [ "$1" ]; do
+        case "$1" in
+            -*)
+                echo "got $1 flag" ;;
+            *)
+                if [ "$CORE_PATH" ]; then
+                    error "too many arguments, $1"
+                fi
+                CORE_PATH="$1" ;;
+        esac
+        shift
+    done
+}
+
+makecore() {
+    echo "$CORE_PATH"
+}
+
+# Options parsing and related functions
+print_version() {
+    echo "$PROG @@VERSION@@"
+}
+
+print_usage() {
+    echo "usage: $PROG [options] <action> [action_options]"
+    echo "-h or --help for more information"
+}
+
+print_help() {
+	cat <<EOF
+options:
+    -v,--version   display version
+    -h,--help       display this message
+    
+actions:
+EOF
+}
+
+parse_options() {
+    EXTRA_OPTIONS=()
+    
+	while [ "$1" ]; do
+		case $1 in
+            -v|--version)
+                print_version
+                exit 0;;
+			-h|--help)
+				print_help
+				exit 0;;
+			*)
+				EXTRA_OPTIONS=(${EXTRA_OPTIONS[@]} $1)
+				;;
+		esac
+        shift
+	done
+}
+
+parse_action() {
+    ACTION=$EXTRA_OPTIONS
+    ACTION_OPTIONS=()
+    
+    for opt in ${EXTRA_OPTIONS[@]}; do
+        if [ "$opt" != "$ACTION" ]; then
+            ACTION_OPTIONS=(${ACTION_OPTIONS[@]} $opt)
+        fi
+    done
+    
+    case $ACTION in
+        makecore|cleancore)
+            parse_${ACTION}_options ${ACTION_OPTIONS[@]}
+            $ACTION ;;
+        -*)
+            error "unknown option $ACTION" ;;
+        *)
+            error "unknown action $ACTION" ;;
+    esac
+}
+
+main() {
+    if [ ! "$1" ]; then
+        print_usage
+        exit 1;
+    fi
+    
+	parse_options "$@"
+    parse_action
+}
+
+# Initialize some variables
+PROG="`basename $0`"
+
+# Start the program
+main "$@"
+
+# End of file
