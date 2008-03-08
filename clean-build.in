@@ -6,7 +6,20 @@ error() {
 	exit 1
 }
 
-# Actions
+# Actions and related functions
+init_core() {
+    DB_ROOT="$CB_CORE_PATH/var/lib/pkg/"
+    if [ ! -d "$CB_CORE_PATH" ]; then
+        mkdir -p "$CB_CORE_PATH" || error "could not create directory $CB_CORE_PATH"
+    fi
+    if [ ! -d "$DB_ROOT" ]; then
+        mkdir -p "$DB_ROOT"
+    fi
+    if [ ! -f "$DB_ROOT/db" ]; then
+        touch "$DB_ROOT/db"
+    fi
+}
+
 parse_makecore_options() {
     while [ "$1" ]; do
         case "$1" in
@@ -22,18 +35,23 @@ parse_makecore_options() {
 }
 
 makecore() {
-    if [ -e "$CB_CORE_PATH" -a -z "$CB_FORCE_MAKE" ]; then
-        error "$CORE_PATH exists, use -f to force creation"
+    if [ ! "$CB_CORE_PATH" ]; then
+        error "core path has not been set"
     fi
-    echo "$CB_CORE_PATH"
+    if [ -e "$CB_CORE_PATH" -a -z "$CB_FORCE_MAKE" ]; then
+        error "$CB_CORE_PATH exists, use the cleancore action or -f to overwrite"
+    fi
+    init_core
 }
 
 # Options parsing and related functions
 load_config() {
-    if [ ! -f "$CB_CONFIG_FILE" ]; then
-        error "file $CB_CONFIG_FILE does not exist"
+    if [ "$CB_CONFIG_FILE" ]; then
+        if [ ! -f "$CB_CONFIG_FILE" ]; then
+            error "file $CB_CONFIG_FILE does not exist"
+        fi
+        . "$CB_CONFIG_FILE"
     fi
-    . "$CB_CONFIG_FILE"
 }
 
 print_version() {
