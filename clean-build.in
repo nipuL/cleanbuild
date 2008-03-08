@@ -1,6 +1,8 @@
 #!/bin/bash
 
+# #############################################
 # Helper functions
+# #############################################
 error() {
     echo "ERROR: $1" >&2
     exit 1
@@ -26,7 +28,9 @@ load_file() {
     fi
 }
 
+# #############################################
 # Actions and related functions
+# #############################################
 check_core_path_set() {
     if [ ! "$CB_CORE_PATH" ]; then
         error "core path has not been set"
@@ -38,7 +42,9 @@ port_installed() {
     echo "$PORT_INSTALLED"
 }
 
+# #############################################
 # initcore and related functions
+# #############################################
 parse_initcore_options() {
     while [ "$1" ]; do
         case "$1" in
@@ -78,7 +84,9 @@ initcore() {
     echo "Core path initialized, use installcore action to add core ports"
 }
 
+# #############################################
 # installcore and related functions
+# #############################################
 parse_installcore_options() {
     while [ "$1" ]; do
         case "$1" in
@@ -106,7 +114,9 @@ installcore() {
     done
 }
 
+# #############################################
 # addport and related functions
+# #############################################
 do_addport() {
     verbose "using $1/$2"
     
@@ -146,7 +156,9 @@ do_addport() {
     )
 }
 
+# #############################################
 # cleancore and related functions
+# #############################################
 parse_cleancore_options() {
     while [ "$1" ]; do
         case "$1" in
@@ -167,8 +179,10 @@ cleancore() {
         fi
     done
 }
-    
+
+# #############################################
 # Options parsing and related functions
+# #############################################
 print_version() {
     echo "$PROG @@VERSION@@"
 }
@@ -254,7 +268,9 @@ main() {
     $ACTION
 }
 
+# #############################################
 # Initialize some variables
+# #############################################
 CB_CORE_PORTS="/usr/ports/core"
 
 CB_FORCE_INIT="false"
@@ -263,7 +279,9 @@ CB_PKGMK_FILE="/etc/pkgmk.conf"
 CB_UPGRADE_PORT="false"
 CB_FORCE_ADD="false"
 
+# #############################################
 # Start the program
+# #############################################
 PROG="`basename $0`"
 main "$@"
 
