@@ -32,6 +32,13 @@ makecore() {
 }
 
 # Options parsing and related functions
+load_config() {
+    if [ ! -f "$CB_CONFIG_FILE" ]; then
+        error "file $CB_CONFIG_FILE does not exist"
+    fi
+    . "$CB_CONFIG_FILE"
+}
+
 print_version() {
     echo "$PROG @@VERSION@@"
 }
@@ -56,6 +63,12 @@ parse_options() {
     
 	while [ "$1" ]; do
 		case $1 in
+            -cf|--config-file)
+                if [ ! "$2" ]; then
+                    error "$1 requires an argument"
+                fi
+                CB_CONFIG_FILE="$2"
+                shift ;;
             -v|--version)
                 print_version
                 exit 0;;
@@ -82,8 +95,7 @@ parse_action() {
     
     case $ACTION in
         makecore|cleancore)
-            parse_${ACTION}_options ${ACTION_OPTIONS[@]}
-            $ACTION ;;
+            parse_${ACTION}_options ${ACTION_OPTIONS[@]} ;;
         -*)
             error "unknown option $ACTION" ;;
         *)
@@ -98,7 +110,10 @@ main() {
     fi
     
 	parse_options "$@"
+    load_config
     parse_action
+    
+    $ACTION
 }
 
 # Initialize some variables
