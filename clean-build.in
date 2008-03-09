@@ -59,7 +59,12 @@ parse_initcore_options() {
     done
 }
 
-do_initcore() {
+initcore() {
+    check_core_path_set
+    if [ -e "$CB_CORE_PATH" -a "$CB_FORCE_INIT" == "false" ]; then
+        error "$CB_CORE_PATH exists, use -f to overwrite"
+    fi
+    info "creating core at $CB_CORE_PATH"
     DB_ROOT="$CB_CORE_PATH/var/lib/pkg/"
     if [ ! -d "$CB_CORE_PATH" ]; then
         verbose "creating directory $CB_CORE_PATH"
@@ -72,15 +77,6 @@ do_initcore() {
     if [ ! -f "$DB_ROOT/db" ]; then
         touch "$DB_ROOT/db"
     fi
-}
-
-initcore() {
-    check_core_path_set
-    if [ -e "$CB_CORE_PATH" -a "$CB_FORCE_INIT" == "false" ]; then
-        error "$CB_CORE_PATH exists, use -f to overwrite"
-    fi
-    info "creating core at $CB_CORE_PATH"
-    do_initcore
     echo "Core path initialized, use installcore action to add core ports"
 }
 
@@ -109,32 +105,56 @@ installcore() {
         PKGADD_FLAGS="$PKGADD_FLAGS -f"
     fi
     info "installing toolchain"
-    for port in ${CB_TOOLCHAIN_PORTS[@]}; do
-        do_addport $CB_CORE_PORTS $port
-    done
+    INSTALL_PORTS=(${CB_TOOLCHAIN_PORTS[*]})
+    addports
 }
 
 # #############################################
 # addport and related functions
 # #############################################
-do_addport() {
-    verbose "using $1/$2"
+parse_addports_options() {
+    ADD_ARGS=()
+    while [ "$1" ]; do
+        case "$1" in
+            -*)
+                error "unknown action option $1" ;;
+            *)
+                ADD_ARGS=(${ADD_ARGS[*]} $1) ;;
+        esac
+        shift
+    done
     
-    verbose "checking if $2 is installed"
-    if [ "`port_installed $2`" ]; then
+    if [ ${#ADD_ARGS[*]} -lt 2 ]; then
+        error "add action requires atleast 2 arguments"
+    fi
+    
+    CB_CORE_PATH="${ADD_ARGS[0]}"
+    
+    for arg in ${ADD_ARGS[*]}; do
+        if [ "$arg" != "$CB_CORE_PATH" ]; then
+            INSTALL_PORTS=(${INSTALL_PORTS[*]} $arg)
+        fi
+    done
+}
+    
+addport() {
+    verbose "using $CB_PORT_DIR/$1"
+    
+    verbose "checking if $1 is installed"
+    if [ "`port_installed $1`" ]; then
         if [ "$CB_UPGRAGE_PORT" != "true" ]; then
-            error "$2 is already installed, use -u flag or removeport action"
+            error "$1 is already installed, use -u flag or removeport action"
         fi
         PKGADD_FLAGS="$PKGADD_FLAGS -u"
     fi
-    verbose "$2 is not installed"
+    verbose "$1 is not installed"
     
     (
-        cd $1
-        if [ ! -d "$2" ]; then
-            error "could not find port $2"
+        cd $CB_PORT_DIR
+        if [ ! -d "$1" ]; then
+            error "could not find port $1"
         fi
-        cd $2
+        cd $1
     
         load_file "$CB_PKGMK_FILE"
         load_file "Pkgfile"
@@ -156,6 +176,22 @@ do_addport() {
     )
 }
 
+addports() {
+    if [ ! "$CB_PORT_DIR" ]; then
+        error "port directory is not defined"
+    fi
+    if [ ! -d "$CB_PORT_DIR" ]; then
+        error "could not find directory $CB_PORT_DIR"
+    fi
+    if [ ! "$INSTALL_PORTS" ]; then
+        error "no ports selected to be installed"
+    fi
+    
+    for port in ${INSTALL_PORTS[*]}; do
+        addport $port
+    done
+}
+
 # #############################################
 # cleancore and related functions
 # #############################################
@@ -173,7 +209,7 @@ parse_cleancore_options() {
 
 cleancore() {
     check_core_path_set
-    for port in $CB_CORE_PORTS/*; do
+    for port in $CB_PORT_DIR/*; do
         if [ "`port_installed $port`" ]; then
             pkgrm -r "$CB_CORE_PATH" $port
         fi
@@ -213,6 +249,11 @@ parse_options() {
                 fi
                 CB_CONFIG_FILE="$2"
                 shift ;;
+            -p|--portdir)
+                if [ ! "$2" ]; then
+                    error "$1 requires an argument"
+                fi
+                CB_PORT_DIR="$2" ;;
             -pf|--pkgmk-file)
                 if [ ! "$2" ]; then
                     error "$1 required an argument"
@@ -246,7 +287,7 @@ parse_action() {
     done
     
     case $ACTION in
-        initcore|installcore|cleancore)
+        initcore|installcore|cleancore|addports)
             parse_${ACTION}_options ${ACTION_OPTIONS[@]} ;;
         -*)
             error "unknown option $ACTION" ;;
@@ -271,7 +312,7 @@ main() {
 # #############################################
 # Initialize some variables
 # #############################################
-CB_CORE_PORTS="/usr/ports/core"
+CB_PORT_DIR="/usr/ports/core"
 
 CB_FORCE_INIT="false"
 
