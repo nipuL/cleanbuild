@@ -50,10 +50,8 @@ parse_initcore_options() {
         case "$1" in
             -f|--force)
                 CB_FORCE_INIT="true" ;;
-            -*)
-                error "unknown action option $1" ;;
             *)
-                CB_CORE_PATH="$1" ;;
+                error "unknown action option $1" ;;
         esac
         shift
     done
@@ -90,20 +88,21 @@ parse_installcore_options() {
                 CB_UPGRADE_PORT="true" ;;
             -f|--force-add)
                 CB_FORCE_ADD="true" ;;
-            -*)
-                error "unknown action option $1" ;;
             *)
-                CB_CORE_PATH="$1" ;;
+                error "unknown action option $1" ;;
         esac
         shift
     done
 }
 
 installcore() {
+    check_core_path_set
+    
     PKGADD_FLAGS="-r $PWD/$CB_CORE_PATH"
     if [ "$CB_FORCE_ADD" == "true" ]; then
         PKGADD_FLAGS="$PKGADD_FLAGS -f"
     fi
+    
     info "installing toolchain"
     INSTALL_PORTS=(${CB_TOOLCHAIN_PORTS[*]})
     addports
@@ -119,22 +118,14 @@ parse_addports_options() {
             -*)
                 error "unknown action option $1" ;;
             *)
-                ADD_ARGS=(${ADD_ARGS[*]} $1) ;;
+                INSTALL_PORTS=(${INSTALL_PORTS[*]} $1) ;;
         esac
         shift
     done
     
-    if [ ${#ADD_ARGS[*]} -lt 2 ]; then
-        error "add action requires atleast 2 arguments"
+    if [ ${#INSTALL_PORTS[*]} -lt 1 ]; then
+        error "addports action requires atleast 1 arguments"
     fi
-    
-    CB_CORE_PATH="${ADD_ARGS[0]}"
-    
-    for arg in ${ADD_ARGS[*]}; do
-        if [ "$arg" != "$CB_CORE_PATH" ]; then
-            INSTALL_PORTS=(${INSTALL_PORTS[*]} $arg)
-        fi
-    done
 }
     
 addport() {
@@ -198,10 +189,8 @@ addports() {
 parse_cleancore_options() {
     while [ "$1" ]; do
         case "$1" in
-            -*)
-                error "unknown action option $1" ;;
             *)
-                CB_CORE_PATH="$1" ;;
+                error "unknown action option $1" ;;
         esac
         shift
     done
@@ -253,12 +242,19 @@ parse_options() {
                 if [ ! "$2" ]; then
                     error "$1 requires an argument"
                 fi
-                CB_PORT_DIR="$2" ;;
+                CB_PORT_DIR="$2"
+                shift ;;
             -pf|--pkgmk-file)
                 if [ ! "$2" ]; then
                     error "$1 required an argument"
                 fi
                 CB_PKGMK_FILE="$2"
+                shift ;;
+            -r|--root)
+                if [ ! "$2" ]; then
+                    error "$1 requires an argument"
+                fi
+                CB_CORE_PATH="$2"
                 shift ;;
             -V|--verbose)
                 CB_VERBOSE="true" ;;
