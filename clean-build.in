@@ -143,8 +143,8 @@ do_addport() {
         info "installing $TARGET"
     
         PACKAGE="$PKGMK_PACKAGE_DIR/$TARGET"
-        info "could not find $TARGET, building"
         if [ ! -f "$PACKAGE" ]; then
+            info "could not find $TARGET, building"
             pkgmk -d
         fi
         
