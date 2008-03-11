@@ -131,6 +131,8 @@ parse_addports_options() {
 addport() {
     verbose "using $CB_PORT_DIR/$1"
     
+    PKGADD_FLAGS="-r $CB_CORE_PATH"
+    
     verbose "checking if $1 is installed"
     if [ "`port_installed $1`" ]; then
         if [ "$CB_UPGRAGE_PORT" != "true" ]; then
@@ -140,31 +142,31 @@ addport() {
     fi
     verbose "$1 is not installed"
     
-    (
-        cd $CB_PORT_DIR
-        if [ ! -d "$1" ]; then
-            error "could not find port $1"
-        fi
-        cd $1
+    cd $CB_PORT_DIR
+    if [ ! -d "$1" ]; then
+        error "could not find port $1"
+    fi
+    cd $1
+
+    load_file "$CB_PKGMK_FILE"
+    load_file "Pkgfile"
+
+    TARGET="$name#$version-$release.pkg.tar.gz"
+    info "installing $TARGET"
+
+    PACKAGE="$PKGMK_PACKAGE_DIR/$TARGET"
+    if [ ! -f "$PACKAGE" ]; then
+        info "could not find $TARGET, building"
+        pkgmk -d
+    fi
     
-        load_file "$CB_PKGMK_FILE"
-        load_file "Pkgfile"
+    COMMAND="pkgadd $PKGADD_FLAGS"
+    verbose "using command: $COMMAND"
+
+    verbose "package: $PACKAGE"
     
-        TARGET="$name#$version-$release.pkg.tar.gz"
-        info "installing $TARGET"
-    
-        PACKAGE="$PKGMK_PACKAGE_DIR/$TARGET"
-        if [ ! -f "$PACKAGE" ]; then
-            info "could not find $TARGET, building"
-            pkgmk -d
-        fi
-        
-        COMMAND="pkgadd $PKGADD_FLAGS"
-        verbose "using command: $COMMAND"
-    
-        verbose "package: $$PACKAGE"
-        $COMMAND $PACKAGE
-    )
+    cd $CB_WORKING_DIR
+    $COMMAND $PACKAGE
 }
 
 addports() {
@@ -309,6 +311,7 @@ main() {
 # Initialize some variables
 # #############################################
 CB_PORT_DIR="/usr/ports/core"
+CB_TOOLCHAIN_PORTS=(filesystem binutils glibc gcc)
 
 CB_FORCE_INIT="false"
 
@@ -320,6 +323,7 @@ CB_FORCE_ADD="false"
 # Start the program
 # #############################################
 PROG="`basename $0`"
+CB_WORKING_DIR="`pwd`"
 main "$@"
 
 # End of file
