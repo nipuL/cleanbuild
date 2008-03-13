@@ -75,9 +75,6 @@ load_file() {
     done
 }
 
-# #############################################
-# Actions and related functions
-# #############################################
 port_installed() {
     PORT_INSTALLED=`pkginfo -r $CB_CORE_PATH -i | cut -d' ' -f1 | grep "^$1$"`
     echo "$PORT_INSTALLED"
