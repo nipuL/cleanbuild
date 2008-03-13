@@ -18,25 +18,56 @@ verbose() {
     fi
 }
 
-load_file() {
-    if [ "$1" ]; then
-        if [ ! -f "$1" ]; then
-            error "could not find file $1"
+check_set() {
+    while [ "$1" ]; do
+        eval CHECK_VAR=\$${1}
+        if [ ! "$CHECK_VAR" ]; then
+            error "$1 has not been set"
         fi
+        shift
+    done
+}
+
+check_readable() {
+    while [ "$1" ]; do
+        if [ ! -r "$1" ]; then
+            error "File $1 is not readable"
+        fi
+        shift
+    done
+}
+
+check_directory() {
+    while [ "$1" ]; do
+        if [ ! -d "$1" ]; then
+            error "could not find directory $1"
+        fi
+        shift
+    done
+}
+
+check_file() {
+    while [ "$1" ]; do
+        if [ ! -f "$1" ]; then
+            error "Could not find file $1"
+        fi
+        check_readable "$1"
+        shift
+    done
+}
+
+load_file() {
+    while [ "$1" ]; do
+        check_file "$1"
         verbose "loading $1"
         . "$1"
-    fi
+        shift
+    done
 }
 
 # #############################################
 # Actions and related functions
 # #############################################
-check_core_path_set() {
-    if [ ! "$CB_CORE_PATH" ]; then
-        error "core path has not been set"
-    fi
-}
-
 port_installed() {
     PORT_INSTALLED=`pkginfo -r $CB_CORE_PATH -i | cut -d' ' -f1 | grep "^$1$"`
     echo "$PORT_INSTALLED"
@@ -58,8 +89,9 @@ parse_initcore_options() {
 }
 
 initcore() {
-    check_core_path_set
-    if [ -e "$CB_CORE_PATH" -a "$CB_FORCE_INIT" == "false" ]; then
+    check_set "CB_CORE_PATH"
+    
+    if [ -e "$CB_CORE_PATH" -a "$CB_FORCE_INIT" != "true" ]; then
         error "$CB_CORE_PATH exists, use -f to overwrite"
     fi
     info "creating core at $CB_CORE_PATH"
@@ -96,7 +128,7 @@ parse_installcore_options() {
 }
 
 installcore() {
-    check_core_path_set
+    check_set "CB_CORE_PATH" "CB_TOOLCHAIN_PORTS"
     
     PKGADD_FLAGS="-r $PWD/$CB_CORE_PATH"
     if [ "$CB_FORCE_ADD" == "true" ]; then
@@ -161,23 +193,18 @@ addport() {
     fi
     
     COMMAND="pkgadd $PKGADD_FLAGS"
-    verbose "using command: $COMMAND"
-
-    verbose "package: $PACKAGE"
+    verbose "using command: $COMMAND $PACKAGE"
     
     cd $CB_WORKING_DIR
     $COMMAND $PACKAGE
 }
 
 addports() {
-    if [ ! "$CB_PORT_DIR" ]; then
-        error "port directory is not defined"
-    fi
+    check_set "CB_CORE_PATH" "CB_PORT_DIR" "INSTALL_PORTS"
+    check_directory "$CB_CORE_PATH" "$CB_PORT_DIR"
+    
     if [ ! -d "$CB_PORT_DIR" ]; then
         error "could not find directory $CB_PORT_DIR"
-    fi
-    if [ ! "$INSTALL_PORTS" ]; then
-        error "no ports selected to be installed"
     fi
     
     for port in ${INSTALL_PORTS[*]}; do
@@ -199,7 +226,9 @@ parse_cleancore_options() {
 }
 
 cleancore() {
-    check_core_path_set
+    check_set "CB_CORE_PATH" "CB_PORT_DIR"
+    check_directory "$CB_CORE_PATH" "$CB_PORT_DIR"
+    
     for port in $CB_PORT_DIR/*; do
         if [ "`port_installed $port`" ]; then
             pkgrm -r "$CB_CORE_PATH" $port
