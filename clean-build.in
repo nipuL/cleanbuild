@@ -135,7 +135,7 @@ installcore() {
         PKGADD_FLAGS="$PKGADD_FLAGS -f"
     fi
     
-    info "installing toolchain"
+    info "installing the toolchain"
     INSTALL_PORTS=(${CB_TOOLCHAIN_PORTS[*]})
     addports
 }
@@ -161,6 +161,8 @@ parse_addports_options() {
 }
     
 addport() {
+    info "adding port: $1"
+    
     verbose "using $CB_PORT_DIR/$1"
     
     PKGADD_FLAGS="-r $CB_CORE_PATH"
@@ -184,7 +186,7 @@ addport() {
     load_file "Pkgfile"
 
     TARGET="$name#$version-$release.pkg.tar.gz"
-    info "installing $TARGET"
+    info "installing package: $TARGET"
 
     PACKAGE="$PKGMK_PACKAGE_DIR/$TARGET"
     if [ ! -f "$PACKAGE" ]; then
