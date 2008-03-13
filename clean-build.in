@@ -239,6 +239,33 @@ cleancore() {
 }
 
 # #############################################
+# binddirs and related functions
+# #############################################
+parse_binddirs_options() {
+    if [ "$1" ]; then
+        CB_BIND_DIRS=()
+        while [ "$1" ]; do
+            case "$1" in
+                -*)
+                    error "unknown action option $1" ;;
+                *)
+                    CB_BIND_DIRS=(${CB_BIND_DIRS[@]} "$1") ;;
+            esac
+            shift
+        done
+    fi
+}
+
+binddirs() {
+    check_set "CB_BIND_DIRS"
+    
+    for d in ${CB_BIND_DIRS[@]}; do
+        echo $d
+    done
+}
+
+    
+# #############################################
 # Options parsing and related functions
 # #############################################
 print_version() {
@@ -316,7 +343,7 @@ parse_action() {
     done
     
     case $ACTION in
-        initcore|installcore|cleancore|addports)
+        initcore|installcore|cleancore|addports|binddirs)
             parse_${ACTION}_options ${ACTION_OPTIONS[@]} ;;
         -*)
             error "unknown option $ACTION" ;;
