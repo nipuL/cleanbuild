@@ -104,10 +104,10 @@ initcore() {
     if [ ! -d "$DB_ROOT" ]; then
         mkdir -p "$DB_ROOT"
     fi
-    if [ ! -f "$DB_ROOT/db" ]; then
-        touch "$DB_ROOT/db"
+    if [ -f "$DB_ROOT/db" ]; then
+        rm "$DB_ROOT/db"
     fi
-    echo "Core path initialized, use installcore action to add core ports"
+    touch "$DB_ROOT/db"
 }
 
 # #############################################
