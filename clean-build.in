@@ -316,6 +316,12 @@ parse_options() {
                 fi
                 CB_CORE_PATH="$2"
                 shift ;;
+            -o|--overlay)
+                if [ ! "$2" ]; then
+                    error "$1 requires an argument"
+                fi
+                CB_OVERLAY_PATH="$2"
+                shift ;;
             -V|--verbose)
                 CB_VERBOSE="true" ;;
             -v|--version)
