@@ -253,17 +253,17 @@ parse_binddirs_options() {
         CB_BIND_DIRS=()
         while [ "$1" ]; do
             case "$1" in
-        -b|--bind)
-            if [ ! "$2" ]; then
-                error "$1 requires an argument"
-            fi
-            case "$2" in
-                core|overlay)
-                    CB_BIND_TO="$2" ;;
-                *)
-                    error "invalid bind option, use core or overlay" ;;
-            esac
-            shift ;;
+                -b|--bind)
+                    if [ ! "$2" ]; then
+                        error "$1 requires an argument"
+                    fi
+                    case "$2" in
+                        core|overlay)
+                            CB_BIND_TO="$2" ;;
+                        *)
+                            error "invalid bind option, use core or overlay" ;;
+                    esac
+                    shift ;;
                 -*)
                     error "unknown action option $1" ;;
                 *)
@@ -286,6 +286,14 @@ mount_bind() {
 }
 
 binddirs() {
+    if [ "$CB_UMOUNT" ]; then
+        do_umount
+    else
+        do_binddirs
+    fi
+}
+
+do_binddirs() {
     check_set "CB_BIND_TO" "CB_BIND_DIRS"
     
     case $CB_BIND_TO in
@@ -304,7 +312,6 @@ binddirs() {
     done
 }
 
-    
 # #############################################
 # Options parsing and related functions
 # #############################################
