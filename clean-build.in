@@ -281,6 +281,8 @@ mount_bind() {
     
     check_directory $BIND_PATH
     check_mounted $BIND_PATH
+    
+    mount -o bind $1 $BIND_PATH || error "could not mount $1 onto $BIND_PATH"
 }
 
 binddirs() {
