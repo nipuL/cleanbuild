@@ -137,11 +137,6 @@ parse_installcore_options() {
 installcore() {
     check_set "CB_CORE_PATH" "CB_TOOLCHAIN_PORTS"
     
-    PKGADD_FLAGS="-r $PWD/$CB_CORE_PATH"
-    if [ "$CB_FORCE_ADD" == "true" ]; then
-        PKGADD_FLAGS="$PKGADD_FLAGS -f"
-    fi
-    
     info "installing the toolchain"
     INSTALL_PORTS=(${CB_TOOLCHAIN_PORTS[*]})
     addports
@@ -197,6 +192,9 @@ addport() {
     verbose "using $CB_PORT_DIR/$1"
     
     PKGADD_FLAGS="-r $CB_CORE_PATH"
+    if [ "$CB_FORCE_ADD" == "true" ]; then
+        PKGADD_FLAGS="$PKGADD_FLAGS -f"
+    fi
     
     verbose "checking if $1 is installed"
     if [ "`port_installed $1`" ]; then
