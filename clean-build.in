@@ -202,7 +202,8 @@ addport() {
     
     verbose "checking if $1 is installed"
     if [ "`port_installed $1`" ]; then
-        if [ "$CB_UPGRAGE_PORT" != "true" ]; then
+        verbose "CB_UPGRADE_PORT = $CB_UPGRADE_PORT"
+        if [ "$CB_UPGRADE_PORT" != "true" ]; then
             error "$1 is already installed, use -u flag or removeport action"
         fi
         PKGADD_FLAGS="$PKGADD_FLAGS -u"
