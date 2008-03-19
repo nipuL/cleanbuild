@@ -145,6 +145,30 @@ installcore() {
     info "installing the toolchain"
     INSTALL_PORTS=(${CB_TOOLCHAIN_PORTS[*]})
     addports
+    
+    info "installing core ports"
+    INSTALL_PORTS=()
+    for port in $CB_PORT_DIR/*; do
+        EXCLUDE=""
+        for p in ${CB_TOOLCHAIN_PORTS[*]}; do
+            if [ "$port" == "$p" ]; then
+                EXCLUDE=1
+                break 1
+            fi
+        done
+        if [ ! "$EXCLUDE" ]; then
+            for p in ${CB_EXCLUDE_PORTS[*]}; do
+                if [ "$port" == "$p" ]; then
+                    EXCLUDE=1
+                    break 1
+                fi
+            done
+        fi
+        if [ ! "$EXCLUDE" ]; then
+            INSTALL_PORTS=(${INSTALL_PORTS[*]} $port)
+        fi
+    done
+    addports
 }
 
 # #############################################
