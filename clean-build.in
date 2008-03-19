@@ -240,7 +240,7 @@ addports() {
     check_directory "$CB_CORE_PATH" "$CB_PORT_DIR"
     
     for port in ${INSTALL_PORTS[*]}; do
-        addport $port
+        addport $port || error "Could not add port $port"
     done
 }
 
