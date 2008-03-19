@@ -173,6 +173,10 @@ parse_addports_options() {
     ADD_ARGS=()
     while [ "$1" ]; do
         case "$1" in
+            -u|--upgrade)
+                CB_UPGRADE_PORT="true" ;;
+            -f|--force-add)
+                CB_FORCE_ADD="true" ;;
             -*)
                 error "unknown action option $1" ;;
             *)
