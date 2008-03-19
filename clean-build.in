@@ -238,10 +238,6 @@ addports() {
     check_set "CB_CORE_PATH" "CB_PORT_DIR" "INSTALL_PORTS"
     check_directory "$CB_CORE_PATH" "$CB_PORT_DIR"
     
-    if [ ! -d "$CB_PORT_DIR" ]; then
-        error "could not find directory $CB_PORT_DIR"
-    fi
-    
     for port in ${INSTALL_PORTS[*]}; do
         addport $port
     done
@@ -305,7 +301,7 @@ mount_bind() {
     
     info "binding $1 onto $BIND_PATH"
     
-    check_directory $BIND_PATH
+    check_directory $1 $BIND_PATH
     check_mounted $BIND_PATH
     
     mount -o bind $1 $BIND_PATH || error "could not mount $1 onto $BIND_PATH"
@@ -330,8 +326,6 @@ do_binddirs() {
         *)
             error "got invalid bind directory, this should not happen" ;;
     esac
-    
-    check_directory $BIND_ROOT
     
     for d in ${CB_BIND_DIRS[@]}; do
         mount_bind "$d"
