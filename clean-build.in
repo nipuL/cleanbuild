@@ -58,8 +58,9 @@ check_file() {
 
 check_mounted() {
     while [ "$1" ]; do
+	verbose "checking if $1 is mounted"
         ABS_PATH="`cd $1; pwd`"
-        if [ "`cat /etc/mtab | awk '{ print $2 }' | grep $1`" ]; then
+        if [ "`cat /etc/mtab | awk '{ print $2 }' | grep $ABS_PATH`" ]; then
             error "$1 is already mounted"
         fi
         shift
@@ -127,6 +128,8 @@ parse_installcore_options() {
                 CB_UPGRADE_PORT="true" ;;
             -f|--force-add)
                 CB_FORCE_ADD="true" ;;
+	    -s|--skip)
+		CB_SKIP="true" ;;
             *)
                 error "unknown action option $1" ;;
         esac
@@ -144,26 +147,30 @@ installcore() {
     info "installing core ports"
     INSTALL_PORTS=()
     for port in $CB_PORT_DIR/*; do
-        EXCLUDE=""
+	EXCLUDE=""
+	port="`basename $port`"
         for p in ${CB_TOOLCHAIN_PORTS[*]}; do
-            if [ "$port" == "$p" ]; then
+	    if [ "$port" == "$p" ]; then
                 EXCLUDE=1
                 break 1
-            fi
+	    fi
         done
         if [ ! "$EXCLUDE" ]; then
-            for p in ${CB_EXCLUDE_PORTS[*]}; do
+	    for p in ${CB_EXCLUDE_PORTS[*]}; do
                 if [ "$port" == "$p" ]; then
-                    EXCLUDE=1
-                    break 1
+		    EXCLUDE=1
+		    break 1
                 fi
-            done
+	    done
         fi
         if [ ! "$EXCLUDE" ]; then
-            INSTALL_PORTS=(${INSTALL_PORTS[*]} $port)
+	    INSTALL_PORTS=(${INSTALL_PORTS[*]} $port)
         fi
     done
+
     addports
+
+    info "core was successfully installed into $CB_CORE_PATH"
 }
 
 # #############################################
@@ -177,6 +184,8 @@ parse_addports_options() {
                 CB_UPGRADE_PORT="true" ;;
             -f|--force-add)
                 CB_FORCE_ADD="true" ;;
+	    -s|--skip)
+		CB_SKIP="true" ;;
             -*)
                 error "unknown action option $1" ;;
             *)
@@ -191,6 +200,11 @@ parse_addports_options() {
 }
     
 addport() {
+    if [ ! -f "$CB_PORT_DIR/$1/Pkgfile" ]; then
+	info "$1 is not a port, skipping"
+	return
+    fi
+
     info "adding port: $1"
     
     verbose "using $CB_PORT_DIR/$1"
@@ -203,6 +217,10 @@ addport() {
     verbose "checking if $1 is installed"
     if [ "`port_installed $1`" ]; then
         verbose "CB_UPGRADE_PORT = $CB_UPGRADE_PORT"
+	if [ "$CB_SKIP" == "true" ]; then
+	    info "$1 is already installed, skipping"
+	    return
+	fi
         if [ "$CB_UPGRADE_PORT" != "true" ]; then
             error "$1 is already installed, use -u flag or removeport action"
         fi
@@ -247,27 +265,27 @@ addports() {
 # #############################################
 # cleancore and related functions
 # #############################################
-parse_cleancore_options() {
-    while [ "$1" ]; do
-        case "$1" in
-            *)
-                error "unknown action option $1" ;;
-        esac
-        shift
-    done
-}
-
-cleancore() {
-    check_set "CB_CORE_PATH" "CB_PORT_DIR"
-    check_directory "$CB_CORE_PATH" "$CB_PORT_DIR"
-    
-    for port in $CB_PORT_DIR/*; do
-        if [ "`port_installed $port`" ]; then
-            pkgrm -r "$CB_CORE_PATH" $port
-        fi
-    done
-}
-
+#parse_cleancore_options() {
+#    while [ "$1" ]; do
+#        case "$1" in
+#            *)
+#                error "unknown action option $1" ;;
+#        esac
+#        shift
+#    done
+#}
+#
+#cleancore() {
+#    check_set "CB_CORE_PATH" "CB_PORT_DIR"
+#    check_directory "$CB_CORE_PATH" "$CB_PORT_DIR"
+#    
+#    for port in $CB_PORT_DIR/*; do
+#        if [ "`port_installed $port`" ]; then
+#            pkgrm -r "$CB_CORE_PATH" $port
+#        fi
+#    done
+#}
+#
 # #############################################
 # binddirs and related functions
 # #############################################
@@ -287,6 +305,10 @@ parse_binddirs_options() {
                             error "invalid bind option, use core or overlay" ;;
                     esac
                     shift ;;
+                -m|--mount)
+                    CB_BIND_OP="mount" ;;
+                -u|--umount)
+                    CB_BIND_OP="umount" ;;
                 -*)
                     error "unknown action option $1" ;;
                 *)
@@ -298,7 +320,11 @@ parse_binddirs_options() {
 }
 
 mount_bind() {
-    BIND_PATH="`echo $BIND_ROOT/$1 | sed 's|//|/|g'`"
+    check_set "BIND_ROOT"
+    check_directory "$BIND_ROOT"
+    
+    BIND_PATH="`echo $BIND_ROOT/$1 | sed -r 's|//+|/|g'`"
+    echo $BIND_PATH
     
     info "binding $1 onto $BIND_PATH"
     
@@ -308,16 +334,22 @@ mount_bind() {
     mount -o bind $1 $BIND_PATH || error "could not mount $1 onto $BIND_PATH"
 }
 
-binddirs() {
-    if [ "$CB_UMOUNT" ]; then
-        do_umount
-    else
-        do_binddirs
-    fi
-}
+#binddirs() {    
+#    check_set "CB_BIND_OP"
+#    
+#    case $CB_BIND_OP in
+#        mount)
+#            do_binddirs ;;
+#        umount)
+#            do_umount ;;
+#        *)
+#            error "invalid bind operation" ;;
+#    esac
+#}
 
-do_binddirs() {
-    check_set "CB_BIND_TO" "CB_BIND_DIRS"
+binddirs() {
+    check_set "CB_BIND_TO" "CB_CORE_PATH" \
+        "CB_OVERLAY_PATH" "CB_BIND_DIRS"
     
     case $CB_BIND_TO in
         core)
@@ -328,9 +360,22 @@ do_binddirs() {
             error "got invalid bind directory, this should not happen" ;;
     esac
     
+    case $CB_BIND_OP in
+	mount)
+	    BIND_FUNC=mount_bind ;;
+	umount)
+	    BIND_FUNC=umount_bind ;;
+	*)
+	    error "got invalid bind operation $CB_BIND_OP"
+    esac
+
     for d in ${CB_BIND_DIRS[@]}; do
-        mount_bind "$d"
+        BIND_FUNC "$d"
     done
+}
+
+do_umount() {
+    error "LAZY PROGRAMMER"
 }
 
 # #############################################
@@ -348,10 +393,12 @@ print_usage() {
 print_help() {
     cat <<EOF
 options:
-    -v,--version   display version
-    -h,--help       display this message
+    -cf,--config-file use alternative config file
+    -v,--version      display version
+    -h,--help         display this message
     
 actions:
+    initcore, installcore, cleancore, 
 EOF
 }
 
@@ -366,7 +413,7 @@ parse_options() {
                 fi
                 CB_CONFIG_FILE="$2"
                 shift ;;
-            -p|--portdir)
+            -p|--port-dir)
                 if [ ! "$2" ]; then
                     error "$1 requires an argument"
                 fi
@@ -417,7 +464,7 @@ parse_action() {
     done
     
     case $ACTION in
-        initcore|installcore|cleancore|addports|binddirs)
+        initcore|installcore|addports|binddirs)
             parse_${ACTION}_options ${ACTION_OPTIONS[@]} ;;
         -*)
             error "unknown option $ACTION" ;;
@@ -444,12 +491,11 @@ main() {
 # #############################################
 CB_PORT_DIR="/usr/ports/core"
 CB_TOOLCHAIN_PORTS=(filesystem binutils glibc gcc)
-
 CB_FORCE_INIT="false"
-
 CB_PKGMK_FILE="/etc/pkgmk.conf"
 CB_UPGRADE_PORT="false"
 CB_FORCE_ADD="false"
+CB_SKIP="false"
 
 # #############################################
 # Start the program
