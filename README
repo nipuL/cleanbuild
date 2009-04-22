@@ -1,0 +1,44 @@
+Clean Build
+--------------------
+
+Clean build is a tool for building ports in a clean chroot environment. Union
+filesystems are used so the base system can be used simultaneously in multiple
+environments. Changes are only made to the overlay filesystem, keeping your core
+system in pristine condition.
+
+As of writing, the unionfs is not part of the linux kernel. You will need to
+apply patches to your kernel source tree.
+
+http://www.filesystems.org/project-unionfs.html
+
+Actions
+--------------------
+
+There are a number of actions that can be used to automate some of the processes
+required when setting up build environment.
+
+initcore - this creates the basic structure of your core, creating the directory
+	   and the package database file.
+
+installcore - installs core ports into your environment
+
+addports - allows you to add ports to the core system
+
+binddirs - binds directories to your core or overlay system.
+
+
+Tuneables
+--------------------
+
+Clean build has a number of options you can set either by the command line or
+in a configuration file
+
+CB_CONFIG_FILECB_PORT_DIR
+CB_PKGMK_FILE
+CB_CORE_PATH
+CB_OVERLAY_PATH
+CB_TOOLCHAIN_PORTS
+CB_FORCE_INIT
+CB_UPGRADE_PORT
+CB_FORCE_ADD
+CB_SKIP
