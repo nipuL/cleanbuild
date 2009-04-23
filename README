@@ -6,8 +6,25 @@ filesystems are used so the base system can be used simultaneously in multiple
 environments. Changes are only made to the overlay filesystem, keeping your core
 system in pristine condition.
 
+This has the advantage over other "clean" environment scripts for CRUX in that a lot
+of repition is removed and space is saved.
+
 As of writing, the unionfs is not part of the linux kernel. The FUSE
 implementation will be used until unionfs is merged.
+
+How it Works
+--------------------
+
+clean-build works by building a core only chroot env, overlay filesystems can then
+be mounted on top of the core one in a copy-on-write unionfs. That way any changes
+will only be made to the top level directory in the stack keeping lower directories
+in their original condition. This will allow you to quickly build "clean" environments
+to test your ports in.
+
+For example you could build xorg on top of a clean core environment, then keep the xorg
+overlay (which will only contain new or changed files) and use that to create a new stack
+for testing x11 applications, while being free to still use the core environment in it's
+original condition.
 
 Actions
 --------------------
@@ -15,29 +32,14 @@ Actions
 There are a number of actions that can be used to automate some of the processes
 required when setting up build environment.
 
-initcore - this creates the basic structure of your core, creating the directory
-	   and the package database file.
+initcore    - this creates the basic structure of your core, creating the directory
+	      and the package database file.
 
 installcore - installs core ports into your environment
 
-addports - allows you to add ports to the core system
+addports    - allows you to add ports to the core system
 
-binddirs - binds directories to your core or overlay system.
+startenv    - mounts your core and overlays into a single unionfs mountpoint.
+	      /proc, /dev, /sys and /tmp are then mounted onto the unionfs.
 
-
-Tuneables
---------------------
-
-Clean build has a number of options you can set either by the command line or
-in a configuration file
-
-CB_CONFIG_FILE
-CB_PORT_DIR
-CB_PKGMK_FILE
-CB_CORE_PATH
-CB_OVERLAY_PATH
-CB_TOOLCHAIN_PORTS
-CB_FORCE_INIT
-CB_UPGRADE_PORT
-CB_FORCE_ADD
-CB_SKIP
+stopenv     - unmount all the mountpoints used in startenv
