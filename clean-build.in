@@ -339,11 +339,17 @@ parse_options() {
                 fi
                 CB_CONFIG_FILE="$2"
                 shift ;;
+            -pr|--port-repo)
+		if [ ! "$2" ]; then
+		    error "$1 requires an argument"
+		fi
+		CB_PORT_REPO="$2"
+		shift ;;
             -p|--port-dir)
                 if [ ! "$2" ]; then
                     error "$1 requires an argument"
                 fi
-                CB_PORT_REPO="$2"
+                CB_PORT_ROOT="$2"
                 shift ;;
             -pf|--pkgmk-file)
                 if [ ! "$2" ]; then
@@ -363,6 +369,12 @@ parse_options() {
                 fi
                 CB_OVERLAY_PATH="$2"
                 shift ;;
+	    -m|--mount-point)
+		if [ ! "$2" ]; then
+		    error "$1 requires an argument"
+		fi
+		CB_MOUNT_PATH="$2"
+		shift ;;
             -V|--verbose)
                 CB_VERBOSE="true" ;;
             -v|--version)
