@@ -1,0 +1,110 @@
+.TH "clean-build" 1
+.SH NAME
+clean\-build \- create clean build environments for CRUX using union filesystems.
+.SH SYNOPSIS
+.B clean\-build
+[options] action [action options]
+.SH DESCRIPTION
+.B clean\-build
+is a tool for creating and managing clean build environments. It it
+unique from other similar utilities as it uses
+.I union filesystems.
+Through the use of union filsystems, lower level directories can be
+reused and used concurrently in read-only mode, all changes are
+recorded in the top level directory.
+.SH OPTIONS
+.TP
+.B -cf, --config-file
+Specify the location of the configuration file. The default is
+.I /usr/etc/clean-build.conf.
+.TP
+.B -p, --port-dir
+The root path of the ports repository. The default is
+.I /usr/ports.
+.TP 
+.B -pr, --port-repo
+The name of the repo the the ports are in located in the root port
+directory. This can be used to add ports from opt into the root
+directory, or to specify an alternative core repository. The default is 
+.I core.
+.TP
+.B -pf, --pkgmk-file
+Use a different configuration file with
+.B pkgmk.
+The default is
+.I /etc/pkgmk.conf.
+.TP
+.B -r, --root
+Set the path of the root directory. This is used as the bottom,
+read-only layer of the unionfs.
+.TP
+.B -o, --overlay
+Set the path of the overlay directory. This is used as the top,
+copy-on-write layer of the unionfs.
+.TP
+.B -m, --mount-point
+Set the path of where the unionfs will be mounted.
+.TP
+.B -v, --version
+Print the version.
+.TP
+.B -h, --help
+Print help.
+.SH ACTIONS
+.TP
+.B initcore [-f,--force]
+This will initialise the environment, so it is ready for 
+.B installcore
+to be run. Use
+.I --force
+to forcefully initialise the environment if files already exist.
+.TP
+.B installcore [-u,--upgrade] [-f,--force-add] [-s,--skip]
+Install all ports found in the specified port repo into the root
+directory. Refer to 
+.B addports
+for further explaination of the options.
+.TP 
+.B addports [-u,--upgrade] [-f,--force-add] [-s,--skip] <portlist>
+Install extra ports into the root directory from the specified port
+repo. The 
+.I -u (--upgrade)
+and
+.I -f (--force-add)
+options behave like in 
+.I pkgadd.
+Use 
+.I --skip
+if to skip ports that are already installed, only installing ports not
+previously installed.
+.TP
+.B startenv
+This will mount the core and overlay directories onto a unionfs, as
+well as mounting system mounts dev, proc, sys and tmp. You can then
+.B chroot
+into the unionfs mount-point.
+.TP
+.B stopenv
+This will unmount all the mount points used to set up the chroot
+environment.
+.SH NOTES
+As of writing the unionfs code has not yet been merged into the main
+linux kernel. For now
+.B unionfs-fuse
+is used. Kernel unionfs support will be added as soon as this feature
+appears in the kernel.
+.SH AUTHOR
+.B Lucas Hazel
+<lucas@die.net.au>
+.SH FILES
+/usr/etc/clean-build.conf
+.SH BUGS
+Currently there is only support for a single read-only and single
+read-write layer, adding support for multiple read-only layers will
+added in the next major release.
+.P
+.B clean-build
+is still in the early testing phase, expect more bugs than you expect
+to expect.
+.SH SEE ALSO
+pkgadd(8), pkgmk(8), chroot(1), unionfs-fuse(8)
