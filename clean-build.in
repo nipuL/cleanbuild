@@ -319,12 +319,19 @@ print_usage() {
 print_help() {
     cat <<EOF
 options:
-    -cf,--config-file use alternative config file
-    -v,--version      display version
-    -h,--help         display this message
+    -cf, --config-file  use alternative config file
+    -p,  --port-dir     location of root port dir
+    -pr, --port-repo    the name of the repo to use
+    -pf, --pkgmk-file   use alternative pkgmk config file
+    -r,  --root         the root path of the environment
+    -o,  --overlay      the overlay path for the environment
+    -m,  --mount-point  the path of where the union will be created
+    -V,  --verbose      display extra information
+    -v,  --version      display version
+    -h,  --help         display this message
     
 actions:
-    initcore, installcore, cleancore, 
+    initcore, installcore, addports, startenv, stopenv
 EOF
 }
 
