@@ -6,10 +6,8 @@ filesystems are used so the base system can be used simultaneously in multiple
 environments. Changes are only made to the overlay filesystem, keeping your core
 system in pristine condition.
 
-As of writing, the unionfs is not part of the linux kernel. You will need to
-apply patches to your kernel source tree.
-
-http://www.filesystems.org/project-unionfs.html
+As of writing, the unionfs is not part of the linux kernel. The FUSE
+implementation will be used until unionfs is merged.
 
 Actions
 --------------------
@@ -33,7 +31,8 @@ Tuneables
 Clean build has a number of options you can set either by the command line or
 in a configuration file
 
-CB_CONFIG_FILECB_PORT_DIR
+CB_CONFIG_FILE
+CB_PORT_DIR
 CB_PKGMK_FILE
 CB_CORE_PATH
 CB_OVERLAY_PATH
