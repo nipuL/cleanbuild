@@ -2,3 +2,4 @@ core
 overlay
 union
 dist
+clean-build
