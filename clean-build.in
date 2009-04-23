@@ -149,12 +149,14 @@ installcore() {
     for port in $CB_PORT_DIR/*; do
 	EXCLUDE=""
 	port="`basename $port`"
-        for p in ${CB_TOOLCHAIN_PORTS[*]}; do
+	# Check if port is in toolchain
+	for p in ${CB_TOOLCHAIN_PORTS[*]}; do
 	    if [ "$port" == "$p" ]; then
-                EXCLUDE=1
-                break 1
+		EXCLUDE=1
+		break 1
 	    fi
-        done
+	done
+	# If not, check if port is explicitly excluded
         if [ ! "$EXCLUDE" ]; then
 	    for p in ${CB_EXCLUDE_PORTS[*]}; do
                 if [ "$port" == "$p" ]; then
@@ -163,13 +165,14 @@ installcore() {
                 fi
 	    done
         fi
+        # Otherwise port can be installed
         if [ ! "$EXCLUDE" ]; then
 	    INSTALL_PORTS=(${INSTALL_PORTS[*]} $port)
         fi
     done
-
+    
     addports
-
+    
     info "core was successfully installed into $CB_CORE_PATH"
 }
 
@@ -263,120 +266,43 @@ addports() {
 }
 
 # #############################################
-# cleancore and related functions
+# startenv and related functions
 # #############################################
-#parse_cleancore_options() {
-#    while [ "$1" ]; do
-#        case "$1" in
-#            *)
-#                error "unknown action option $1" ;;
-#        esac
-#        shift
-#    done
-#}
-#
-#cleancore() {
-#    check_set "CB_CORE_PATH" "CB_PORT_DIR"
-#    check_directory "$CB_CORE_PATH" "$CB_PORT_DIR"
-#    
-#    for port in $CB_PORT_DIR/*; do
-#        if [ "`port_installed $port`" ]; then
-#            pkgrm -r "$CB_CORE_PATH" $port
-#        fi
-#    done
-#}
-#
-# #############################################
-# binddirs and related functions
-# #############################################
-parse_binddirs_options() {
-    if [ "$1" ]; then
-        CB_BIND_DIRS=()
-        while [ "$1" ]; do
-            case "$1" in
-                -b|--bind)
-                    if [ ! "$2" ]; then
-                        error "$1 requires an argument"
-                    fi
-                    case "$2" in
-                        core|overlay)
-                            CB_BIND_TO="$2" ;;
-                        *)
-                            error "invalid bind option, use core or overlay" ;;
-                    esac
-                    shift ;;
-                -m|--mount)
-                    CB_BIND_OP="mount" ;;
-                -u|--umount)
-                    CB_BIND_OP="umount" ;;
-                -*)
-                    error "unknown action option $1" ;;
-                *)
-                    CB_BIND_DIRS=(${CB_BIND_DIRS[@]} "$1") ;;
-            esac
-            shift
-        done
-    fi
+parse_startenv_options() {
+    return
 }
 
-mount_bind() {
-    check_set "BIND_ROOT"
-    check_directory "$BIND_ROOT"
-    
-    BIND_PATH="`echo $BIND_ROOT/$1 | sed -r 's|//+|/|g'`"
-    echo $BIND_PATH
-    
-    info "binding $1 onto $BIND_PATH"
-    
-    check_directory $1 $BIND_PATH
-    check_mounted $BIND_PATH
-    
-    mount -o bind $1 $BIND_PATH || error "could not mount $1 onto $BIND_PATH"
+startenv() {
+    check_set "CB_CORE_PATH" "CB_OVERLAY_PATH" "CB_MOUNT_PATH"
+    check_directory "$CB_CORE_PATH" "$CB_OVERLAY_PATH" "$CB_MOUNT_PATH"
+    check_mounted "$CB_MOUNT_PATH"
+
+    unionfs -ocow -oallow_other "$CB_OVERLAY_PATH"=RW:"$CB_CORE_PATH"=RO "$CB_MOUNT_PATH"
+    mount --bind /dev "$CB_MOUNT_PATH"/dev
+    mount --bind /tmp "$CB_MOUNT_PATH"/tmp
+    mount -t proc none "$CB_MOUNT_PATH"/proc
+    mount -t sysfs none "$CB_MOUNT_PATH"/sys
+
+    info "Clean chroot envorinment created in $CB_MOUNT_PATH"
 }
 
-#binddirs() {    
-#    check_set "CB_BIND_OP"
-#    
-#    case $CB_BIND_OP in
-#        mount)
-#            do_binddirs ;;
-#        umount)
-#            do_umount ;;
-#        *)
-#            error "invalid bind operation" ;;
-#    esac
-#}
-
-binddirs() {
-    check_set "CB_BIND_TO" "CB_CORE_PATH" \
-        "CB_OVERLAY_PATH" "CB_BIND_DIRS"
-    
-    case $CB_BIND_TO in
-        core)
-            BIND_ROOT=$CB_CORE_PATH ;;
-        overlay)
-            BIND_ROOT=$CB_OVERLAY_PATH ;;
-        *)
-            error "got invalid bind directory, this should not happen" ;;
-    esac
-    
-    case $CB_BIND_OP in
-	mount)
-	    BIND_FUNC=mount_bind ;;
-	umount)
-	    BIND_FUNC=umount_bind ;;
-	*)
-	    error "got invalid bind operation $CB_BIND_OP"
-    esac
-
-    for d in ${CB_BIND_DIRS[@]}; do
-        BIND_FUNC "$d"
-    done
+parse_stopenv_options() {
+    return
 }
 
-do_umount() {
-    error "LAZY PROGRAMMER"
+stopenv() {
+    check_set "CB_CORE_PATH" "CB_OVERLAY_PATH" "CB_MOUNT_PATH"
+    check_directory "$CB_CORE_PATH" "$CB_OVERLAY_PATH" "$CB_MOUNT_PATH"
+
+    umount "$CB_MOUNT_PATH"/tmp
+    umount "$CB_MOUNT_PATH"/dev
+    umount "$CB_MOUNT_PATH"/proc
+    umount "$CB_MOUNT_PATH"/sys
+    fusermount -u "$CB_MOUNT_PATH"
+
+    info "Clean build environment had been unmounted"
 }
+
 
 # #############################################
 # Options parsing and related functions
@@ -417,7 +343,7 @@ parse_options() {
                 if [ ! "$2" ]; then
                     error "$1 requires an argument"
                 fi
-                CB_PORT_DIR="$2"
+                CB_PORT_REPO="$2"
                 shift ;;
             -pf|--pkgmk-file)
                 if [ ! "$2" ]; then
@@ -464,7 +390,7 @@ parse_action() {
     done
     
     case $ACTION in
-        initcore|installcore|addports|binddirs)
+        initcore|installcore|addports|binddirs|startenv|stopenv)
             parse_${ACTION}_options ${ACTION_OPTIONS[@]} ;;
         -*)
             error "unknown option $ACTION" ;;
@@ -483,13 +409,17 @@ main() {
     load_file "$CB_CONFIG_FILE"
     parse_action
     
+    CB_PORT_DIR="$CB_PORT_ROOT"/"$CB_PORT_REPO"
+
     $ACTION
 }
 
 # #############################################
 # Initialize some variables
 # #############################################
-CB_PORT_DIR="/usr/ports/core"
+CB_CONFIG_FILE="/usr/etc/cleanbuild.conf"
+CB_PORT_ROOT="/usr/ports/"
+CB_PORT_REPO="core"
 CB_TOOLCHAIN_PORTS=(filesystem binutils glibc gcc)
 CB_FORCE_INIT="false"
 CB_PKGMK_FILE="/etc/pkgmk.conf"
