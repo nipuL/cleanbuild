@@ -1,0 +1,6 @@
+CB_CORE_PATH="core"
+CB_OVERLAY_PATH="overlay"
+CB_MOUNT_PATH="union"
+CB_TOOLCHAIN_PORTS=(filesystem binutils glibc gcc)
+CB_PORT_ROOT="/home/lucas/Projects/crux/ports/"
+
