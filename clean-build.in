@@ -436,7 +436,7 @@ main() {
 # #############################################
 # Initialize some variables
 # #############################################
-CB_CONFIG_FILE="/usr/etc/cleanbuild.conf"
+CB_CONFIG_FILE="/usr/etc/clean-build.conf"
 CB_PORT_ROOT="/usr/ports/"
 CB_PORT_REPO="core"
 CB_TOOLCHAIN_PORTS=(filesystem binutils glibc gcc)
